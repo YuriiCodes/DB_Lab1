@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	authorsService2 "BD_Lab1/authorsService"
 	"BD_Lab1/entities"
+	"BD_Lab1/postsService"
 )
 
 func greet() {
@@ -36,46 +36,47 @@ func greet() {
 }
 func main() {
 	greet()
-	authorsService, err := authorsService2.NewAuthorsService("authors")
+
+	postsSer, _ := postsService.NewPostService()
+	post := entities.Post{
+		ID:       1,
+		AuthorId: 1,
+		Title:    "Title",
+		Content:  "Content",
+	}
+
+	postUpdated := entities.Post{
+		ID:       1,
+		AuthorId: 1,
+		Title:    "TitleUpdated",
+		Content:  "ContentUpdated",
+	}
+
+	err := postsSer.CreatePost(post)
 	if err != nil {
-		panic(err)
+		fmt.Println("error while creating post: ", err.Error())
 	}
 
-	author1 := entities.Author{
-		Name:     "Yurii",
-		Email:    "Yurii@gmail.com",
-		Password: "Mello",
-	}
-
-	author2 := entities.Author{
-		Name:     "Yurii2",
-		Email:    "Yurii2@gmail.com",
-		Password: "Hello",
-	}
-
-	author2Updated := entities.Author{
-		ID:    2,
-		Name:  "Yurii2",
-		Email: "Yurii2IUPDATED@gmail.com",
-	}
-
-	authorsService.CreateAuthor(&author1)
-	authorsService.CreateAuthor(&author2)
-
-	//authorsService.PrintAllInfo()
-
-	authorsLength, err := authorsService.CalculateAuthors()
+	post1, err := postsSer.GetPostById(1)
 	if err != nil {
-		panic(err)
+		fmt.Println("error while getting post by id: ", err.Error())
 	}
-	fmt.Println("Authors length: ", authorsLength)
+	fmt.Println("post1: ", post1)
 
-	authorsService.PrintAllAuthors()
-	authorsService.UpdateAuthor(&author2Updated)
+	err = postsSer.UpdatePost(postUpdated)
+	if err != nil {
+		fmt.Println("error while updating post: ", err.Error())
+	}
 
-	authors, err := authorsService.GetAllAuthors()
-	fmt.Println(authors)
+	post1Updated, err := postsSer.GetPostById(1)
+	if err != nil {
+		fmt.Println("error while getting post by id: ", err.Error())
+	}
+	fmt.Println("post1Updated: ", post1Updated)
 
-	authorsService.Close()
-
+	//postsSer.DeletePost(1)
+	err = postsSer.DeleteAllPostsByAuthorId(1)
+	if err != nil {
+		fmt.Println("error while deleting all posts by author id: ", err.Error())
+	}
 }

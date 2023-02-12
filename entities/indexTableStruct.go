@@ -1,13 +1,11 @@
 package entities
 
 type IndexTableRow struct {
-	UID             uint64
-	FileStartOffset int
-	FileEndOffset   int
+	UID        int `json:"uid"`
+	NumInArray int `json:"numInArray"`
 }
 
 type IndexTable struct {
-	PreviousMaxUID uint64
-	OverallOffset  int
-	Rows           []IndexTableRow
+	Uid  int             `json:"previousMaxUID"`
+	Rows []IndexTableRow `json:"rows"`
 }
