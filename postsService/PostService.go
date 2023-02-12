@@ -277,3 +277,15 @@ func (p *PostService) PrintSystemInfo() {
 		fmt.Println(row.UID, "\t", row.NumInArray)
 	}
 }
+
+func (p *PostService) Close() error {
+	err := p.postsFile.Close()
+	if err != nil {
+		return err
+	}
+	err = p.indexTableFile.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}

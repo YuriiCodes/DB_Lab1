@@ -297,3 +297,21 @@ func (a *AuthorsService) UpdatePostFromAuthor(post entities.Post) (entities.Post
 	}
 	return updatedPost, nil
 }
+
+func (a *AuthorsService) Close() error {
+	err := a.postService.Close()
+	if err != nil {
+		return err
+	}
+	err = a.authorsFile.Close()
+
+	if err != nil {
+		return err
+	}
+	err = a.indexTableFile.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+
+}

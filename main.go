@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"BD_Lab1/authorsService"
 	"BD_Lab1/entities"
@@ -14,8 +15,12 @@ func greet() {
 	fmt.Println("Made by: Yurii Pidlisnyi, K-26")
 	fmt.Println("Here are available commands 👇")
 
+	fmt.Println("help - show all available commands\n")
+
 	fmt.Println("get-m <author_id> - get author by id")
+	fmt.Println("get-all-m - get all authors")
 	fmt.Println("get-s <post_id> - get post by id\n")
+	fmt.Println("get-all-s - get all posts\n")
 
 	fmt.Println("del-m <author_id> - delete author by id")
 	fmt.Println("del-s <post_id> - delete post by id\n")
@@ -33,24 +38,149 @@ func greet() {
 	fmt.Println("ut-s - utility function for printing all the fields (including the system ones) of the post table\n")
 
 	fmt.Println("exit - exit the program")
-
 }
-func main() {
-	greet()
 
-	// initialize the post service:
-	postsServ, err := postsService.NewPostService()
-	if err != nil {
-		fmt.Println("error while creating post service: ", err.Error())
+// create a function to get the command from the user. The commands are described inside of the greet() function.
+// this function will get user input and call the corresponding function from the services.
+func getCommand(auService authorsService.AuthorsService, pService postsService.PostService) {
+	var command string
+	var id int
+	var name string
+
+	fmt.Print("Enter command: ")
+	fmt.Scan(&command)
+
+	switch command {
+	case "get-m":
+		fmt.Print("Enter author id: ")
+		fmt.Scan(&id)
+		author, err := auService.GetAuthorById(id)
+		if err != nil {
+			fmt.Println("error while getting author: ", err.Error())
+			return
+		}
+		fmt.Println("author: ", author)
+	case "get-s":
+		fmt.Print("Enter post id: ")
+		fmt.Scan(&id)
+		post, err := pService.GetPostById(id)
+		if err != nil {
+			fmt.Println("error while getting post: ", err.Error())
+			return
+		}
+		fmt.Println("post: ", post)
+	case "del-m":
+		fmt.Print("Enter author id: ")
+		fmt.Scan(&id)
+		author, err := auService.DeleteAuthor(id)
+		if err != nil {
+			fmt.Println("error while deleting author: ", err.Error())
+			return
+		}
+		fmt.Println("author deleted with id: ", author.ID)
+	case "del-s":
+		fmt.Print("Enter post id: ")
+		fmt.Scan(&id)
+		post, err := pService.DeletePost(id)
+		if err != nil {
+			fmt.Println("error while deleting post: ", err.Error())
+			return
+		}
+		fmt.Println("post deleted with id: ", post.ID)
+	case "update-m":
+		fmt.Print("Enter author id: ")
+		fmt.Scan(&id)
+		fmt.Print("Enter author name: ")
+		fmt.Scan(&name)
+		author, err := auService.UpdateAuthor(entities.Author{ID: id, Name: name})
+		if err != nil {
+			fmt.Println("error while updating author: ", err.Error())
+			return
+		}
+		fmt.Println("author updated: ", author)
+	case "update-s":
+		var title string
+		var content string
+		fmt.Print("Enter post id: ")
+		fmt.Scan(&id)
+		fmt.Print("Enter post title: ")
+		fmt.Scan(&title)
+		fmt.Print("Enter post content: ")
+		fmt.Scan(&content)
+		post, err := pService.UpdatePost(entities.Post{ID: id, Title: title, Content: content})
+		if err != nil {
+			fmt.Println("error while updating post: ", err.Error())
+			return
+		}
+		fmt.Println("post updated: ", post)
+	case "insert-m":
+		fmt.Print("Enter author name: ")
+		fmt.Scan(&name)
+		author, err := auService.CreateAuthor(entities.Author{Name: name})
+		if err != nil {
+			fmt.Println("error while creating author: ", err.Error())
+			return
+		}
+		fmt.Println("author created: ", author)
+	case "insert-s":
+		var title string
+		var content string
+		fmt.Print("Enter author id: ")
+		fmt.Scan(&id)
+		fmt.Print("Enter post title: ")
+		fmt.Scan(&title)
+		fmt.Print("Enter post content: ")
+		fmt.Scan(&content)
+		post, err := auService.AddPostByAuthor(entities.Post{Title: title, Content: content, AuthorId: id})
+		if err != nil {
+			fmt.Println("error while creating post: ", err.Error())
+			return
+		}
+		fmt.Println("post created: ", post)
+	case "calc-m":
+		count := auService.GetNumberOfAuthors()
+		fmt.Println("number of authors: ", count)
+	case "calc-s":
+		count := pService.GetNumberOfPosts()
+		fmt.Println("number of posts: ", count)
+	case "ut-m":
+		err := auService.PrintSystemInfo()
+		if err != nil {
+			fmt.Println("error while printing system info: ", err.Error())
+			return
+		}
+	case "ut-s":
+		pService.PrintSystemInfo()
+	case "get-all-m":
+		authors, err := auService.GetAllAuthors()
+		if err != nil {
+			fmt.Println("error while getting all authors: ", err.Error())
+			return
+		}
+		fmt.Println("authors: ", authors)
+	case "get-all-s":
+		posts, err := pService.GetAllPosts()
+		if err != nil {
+			fmt.Println("error while getting all posts: ", err.Error())
+			return
+		}
+		fmt.Println("posts: ", posts)
+	case "help":
+		greet()
+	case "exit":
+		fmt.Println("exiting...")
+		err := auService.Close()
+		if err != nil {
+			fmt.Println("error while closing author service: ", err.Error())
+		}
+		os.Exit(0)
+	default:
+		fmt.Println("unknown command")
 		return
 	}
+}
 
-	// initialize the author service:
-	authorsServ, err := authorsService.NewAuthorService(postsServ)
-	if err != nil {
-		fmt.Println("error while creating author service: ", err.Error())
-		return
-	}
+func nonCliShowcase(postsServ postsService.PostService, authorsServ authorsService.AuthorsService) {
 
 	// 1. create 5 authors:
 	author1, err := authorsServ.CreateAuthor(entities.Author{Name: "Yurii"})
@@ -156,4 +286,37 @@ func main() {
 		return
 	}
 	postsServ.PrintSystemInfo()
+
+	err = authorsServ.Close()
+	if err != nil {
+		fmt.Println("error while closing author service: ", err.Error())
+	}
+}
+func CliShowcase(auService authorsService.AuthorsService, pService postsService.PostService) {
+	greet()
+	//	while loop to perform infinite getCommand() calls
+	for {
+		getCommand(auService, pService)
+	}
+
+}
+func main() {
+	greet()
+
+	// initialize the post service:
+	postsServ, err := postsService.NewPostService()
+	if err != nil {
+		fmt.Println("error while creating post service: ", err.Error())
+		return
+	}
+
+	// initialize the author service:
+	authorsServ, err := authorsService.NewAuthorService(postsServ)
+	if err != nil {
+		fmt.Println("error while creating author service: ", err.Error())
+		return
+	}
+
+	//nonCliShowcase(*postsServ, *authorsServ)
+	CliShowcase(*authorsServ, *postsServ)
 }
