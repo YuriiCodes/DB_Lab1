@@ -250,3 +250,32 @@ func (p *PostService) DeleteAllPostsByAuthorId(id int) error {
 	}
 	return nil
 }
+func (p *PostService) GetNumberOfPosts() int {
+	return len(p.posts)
+}
+
+func (p *PostService) GetPostsByAuthorId(id int) ([]entities.Post, error) {
+	var posts []entities.Post
+	for _, post := range p.posts {
+		if post.AuthorId == id {
+			posts = append(posts, post)
+		}
+	}
+	if len(posts) == 0 {
+		return posts, errors.New("no posts with such author id")
+	}
+	return posts, nil
+}
+
+func (p *PostService) PrintSystemInfo() {
+	fmt.Println("Posts:")
+	fmt.Println("UID\tTitle\tContent\tAuthorId")
+	for _, post := range p.posts {
+		fmt.Println(post.ID, "\t", post.Title, "\t", post.Content, "\t", post.AuthorId)
+	}
+	fmt.Println("Index table:")
+	fmt.Println("UID\tNumInArray")
+	for _, row := range p.indexTable.Rows {
+		fmt.Println(row.UID, "\t", row.NumInArray)
+	}
+}

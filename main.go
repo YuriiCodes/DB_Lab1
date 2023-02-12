@@ -75,8 +75,17 @@ func main() {
 	fmt.Println("post1Updated: ", post1Updated)
 
 	//postsSer.DeletePost(1)
-	err = postsSer.DeleteAllPostsByAuthorId(1)
+	//err = postsSer.DeleteAllPostsByAuthorId(1)
+	//if err != nil {
+	//	fmt.Println("error while deleting all posts by author id: ", err.Error())
+	//}
+
+	fmt.Println("number of posts: ", postsSer.GetNumberOfPosts())
+	postsByAuthor, err := postsSer.GetPostsByAuthorId(1)
 	if err != nil {
-		fmt.Println("error while deleting all posts by author id: ", err.Error())
+		fmt.Println("error while getting posts by author id: ", err.Error())
 	}
+	fmt.Println("posts by author: ", postsByAuthor)
+
+	postsSer.PrintSystemInfo()
 }
