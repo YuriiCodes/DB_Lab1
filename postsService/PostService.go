@@ -83,9 +83,6 @@ func NewPostService() (*PostService, error) {
 	}, nil
 }
 
-func (p *PostService) GetPosts() []entities.Post {
-	return p.posts
-}
 func (p *PostService) CreatePost(post entities.Post) error {
 	// update ID to be unique:
 	post.ID = p.indexTable.Uid + 1
