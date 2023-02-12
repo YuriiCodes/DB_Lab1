@@ -83,7 +83,7 @@ func NewPostService() (*PostService, error) {
 	}, nil
 }
 
-func (p *PostService) CreatePost(post entities.Post) error {
+func (p *PostService) CreatePost(post entities.Post) (entities.Post, error) {
 	// update ID to be unique:
 	post.ID = p.indexTable.Uid + 1
 	p.posts = append(p.posts, post)
@@ -91,17 +91,17 @@ func (p *PostService) CreatePost(post entities.Post) error {
 	// write to file:
 	err := p.postsFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	_, err = p.postsFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-		return err
+		return entities.Post{}, err
 	}
 	err = json.NewEncoder(p.postsFile).Encode(p.posts)
 	if err != nil {
 		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
 
 	// update index table:
@@ -114,19 +114,19 @@ func (p *PostService) CreatePost(post entities.Post) error {
 	// write to file: (we have to update the existing json in file, not append the whole new one):
 	err = p.indexTableFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	_, err = p.indexTableFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of posts.ind: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	err = json.NewEncoder(p.indexTableFile).Encode(p.indexTable)
 	if err != nil {
 		fmt.Println("error while writing index table to posts.ind: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
-	return nil
+	return post, nil
 }
 
 func (p *PostService) GetPostById(id int) (entities.Post, error) {
@@ -137,14 +137,11 @@ func (p *PostService) GetPostById(id int) (entities.Post, error) {
 		}
 	}
 	return entities.Post{
-		ID:       -1,
-		Title:    "",
-		Content:  "",
-		AuthorId: -1,
+		ID: -1,
 	}, errors.New("no post with such id")
 }
 
-func (p *PostService) UpdatePost(post entities.Post) error {
+func (p *PostService) UpdatePost(post entities.Post) (entities.Post, error) {
 	// search in index table:
 	for _, row := range p.indexTable.Rows {
 		if row.UID == post.ID {
@@ -152,25 +149,25 @@ func (p *PostService) UpdatePost(post entities.Post) error {
 			// write to file:
 			err := p.postsFile.Truncate(0)
 			if err != nil {
-				return err
+				return entities.Post{ID: -1}, err
 			}
 			_, err = p.postsFile.Seek(0, 0)
 			if err != nil {
 				fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-				return err
+				return entities.Post{}, err
 			}
 			err = json.NewEncoder(p.postsFile).Encode(p.posts)
 			if err != nil {
 				fmt.Println("error while writing posts to posts.fl: ", err.Error())
-				return err
+				return entities.Post{ID: -1}, err
 			}
-			return nil
+			return post, nil
 		}
 	}
-	return errors.New("no post with such id")
+	return entities.Post{}, errors.New("no post with such id")
 }
 
-func (p *PostService) DeletePost(id int) error {
+func (p *PostService) DeletePost(id int) (entities.Post, error) {
 	// search for post in index table and update indexes of all posts after it (decrease by 1):
 	var index int
 	var found bool
@@ -182,7 +179,7 @@ func (p *PostService) DeletePost(id int) error {
 		}
 	}
 	if !found {
-		return errors.New("no post with such id")
+		return entities.Post{ID: -1}, errors.New("no post with such id")
 	}
 	// iterate over each row after index and decrease NumInArray by 1:
 	for i := index + 1; i < len(p.indexTable.Rows); i++ {
@@ -193,17 +190,17 @@ func (p *PostService) DeletePost(id int) error {
 	//save index table to file:
 	err := p.indexTableFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	_, err = p.indexTableFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of posts.ind: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	err = json.NewEncoder(p.indexTableFile).Encode(p.indexTable)
 	if err != nil {
 		fmt.Println("error while writing index table to posts.ind: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
 
 	// update posts:
@@ -211,24 +208,28 @@ func (p *PostService) DeletePost(id int) error {
 	// save posts to file:
 	err = p.postsFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	_, err = p.postsFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	err = json.NewEncoder(p.postsFile).Encode(p.posts)
 	if err != nil {
 		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return err
+		return entities.Post{ID: -1}, err
 	}
-	return nil
+	return entities.Post{ID: id}, nil
 }
 
-func (p *PostService) GetAllPosts() []entities.Post {
-	return p.posts
+func (p *PostService) GetAllPosts() ([]entities.Post, error) {
+	if len(p.posts) == 0 {
+		return nil, errors.New("no posts")
+	}
+	return p.posts, nil
 }
+
 func (p *PostService) DeleteAllPostsByAuthorId(id int) error {
 	// iterate over posts using range function and collect all posts with author id = id
 	var IDs []int
@@ -240,7 +241,7 @@ func (p *PostService) DeleteAllPostsByAuthorId(id int) error {
 
 	// then delete them using DeletePost method
 	for _, id := range IDs {
-		err := p.DeletePost(id)
+		_, err := p.DeletePost(id)
 		if err != nil {
 			return err
 		}

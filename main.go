@@ -37,12 +37,15 @@ func greet() {
 }
 func main() {
 	greet()
+
+	// initialize the post service:
 	postsServ, err := postsService.NewPostService()
 	if err != nil {
 		fmt.Println("error while creating post service: ", err.Error())
 		return
 	}
 
+	// initialize the author service:
 	authorsServ, err := authorsService.NewAuthorService(postsServ)
 	if err != nil {
 		fmt.Println("error while creating author service: ", err.Error())
@@ -50,49 +53,107 @@ func main() {
 	}
 
 	// 1. create 5 authors:
-	authorsServ.CreateAuthor(entities.Author{Name: "Yurii"})
-	authorsServ.CreateAuthor(entities.Author{Name: "Vlad"})
-	authorsServ.CreateAuthor(entities.Author{Name: "Ivan"})
-	authorsServ.CreateAuthor(entities.Author{Name: "Oleg"})
-	authorsServ.CreateAuthor(entities.Author{Name: "Vitalii"})
+	author1, err := authorsServ.CreateAuthor(entities.Author{Name: "Yurii"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
+	author2, err := authorsServ.CreateAuthor(entities.Author{Name: "Vlad"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
+
+	author3, err := authorsServ.CreateAuthor(entities.Author{Name: "Ivan"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
+	_, err = authorsServ.CreateAuthor(entities.Author{Name: "Oleg"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
+	_, err = authorsServ.CreateAuthor(entities.Author{Name: "Vitalii"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
 
 	// 2. for first author, add 1 post, for second author - 2 posts, for third author - 3 posts
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 1, Title: "Post 1", Content: "Content 1"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author1.ID, Title: "Post 1", Content: "Content 1"})
 
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 2, Title: "Post 2", Content: "Content 2"})
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 2, Title: "Post 3", Content: "Content 3"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author2.ID, Title: "Post 2", Content: "Content 2"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author2.ID, Title: "Post 3", Content: "Content 3"})
 
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 3, Title: "Post 4", Content: "Content 4"})
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 3, Title: "Post 5", Content: "Content 5"})
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 3, Title: "Post 6", Content: "Content 6"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author3.ID, Title: "Post 4", Content: "Content 4"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author3.ID, Title: "Post 5", Content: "Content 5"})
+	authorsServ.AddPostByAuthor(entities.Post{AuthorId: author3.ID, Title: "Post 6", Content: "Content 6"})
 
 	// 3. print system info for authors & posts:
-	authorsServ.PrintSystemInfo()
+	err = authorsServ.PrintSystemInfo()
+	if err != nil {
+		fmt.Println("error while printing system info: ", err.Error())
+		return
+	}
 	postsServ.PrintSystemInfo()
 
 	// 4. remove master file with 2 posts (the second author)
-	authorsServ.DeleteAuthor(2)
+	_, err = authorsServ.DeleteAuthor(author2.ID)
+	if err != nil {
+		fmt.Println("error while deleting author: ", err.Error())
+		return
+	}
 
 	// 5. remove one post from the third author
-	authorsServ.RemovePostFromAuthor(4)
+	posts, err := authorsServ.GetPostsByAuthorId(author3.ID)
+	if err != nil {
+		fmt.Println("error while getting posts by author id: ", err.Error())
+		return
+	}
+	authorsServ.RemovePostFromAuthor(posts[0].ID)
 
 	// 6. print system info for authors & posts:
-	authorsServ.PrintSystemInfo()
+	err = authorsServ.PrintSystemInfo()
+	if err != nil {
+		fmt.Println("error while printing system info: ", err.Error())
+		return
+	}
 	postsServ.PrintSystemInfo()
 
 	// 7. Add one more master & add post by him:
-	authorsServ.CreateAuthor(entities.Author{Name: "Steve"})
-	authorsServ.AddPostByAuthor(entities.Post{AuthorId: 6, Title: "Post 7", Content: "Content 7"})
+	author6, err := authorsServ.CreateAuthor(entities.Author{Name: "Steve"})
+	if err != nil {
+		fmt.Println("error while creating author: ", err.Error())
+		return
+	}
+	postByAuthor6, err := authorsServ.AddPostByAuthor(entities.Post{AuthorId: author6.ID, Title: "Post 7", Content: "Content 7"})
+	if err != nil {
+		fmt.Println("error while adding post by author: ", err.Error())
+		return
+	}
 
 	// 8. print system info for authors & posts:
-	authorsServ.PrintSystemInfo()
+	err = authorsServ.PrintSystemInfo()
+	if err != nil {
+		fmt.Println("error while printing system info: ", err.Error())
+		return
+	}
 	postsServ.PrintSystemInfo()
 
 	// 9. Update one master & post by him:
-	authorsServ.UpdateAuthor(entities.Author{ID: 6, Name: "Steve Jobs"})
-	authorsServ.UpdatePostFromAuthor(entities.Post{ID: 7, AuthorId: 6, Title: "Post 7", Content: "Content 7"})
+	author6Updated, err := authorsServ.UpdateAuthor(entities.Author{ID: author6.ID, Name: "Steve Jobs"})
+	if err != nil {
+		fmt.Println("error while updating author: ", err.Error())
+		return
+	}
+	authorsServ.UpdatePostFromAuthor(entities.Post{ID: postByAuthor6.ID, AuthorId: author6Updated.ID, Title: "Post 7 UPDATED", Content: "Content 7 UPDATED"})
 
 	// 10. print system info for authors & posts:
-	authorsServ.PrintSystemInfo()
+	err = authorsServ.PrintSystemInfo()
+	if err != nil {
+		fmt.Println("error while printing system info: ", err.Error())
+		return
+	}
 	postsServ.PrintSystemInfo()
 }

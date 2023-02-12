@@ -86,7 +86,7 @@ func NewAuthorService(postServ *postsService.PostService) (*AuthorsService, erro
 	}, nil
 }
 
-func (a *AuthorsService) CreateAuthor(author entities.Author) error {
+func (a *AuthorsService) CreateAuthor(author entities.Author) (entities.Author, error) {
 	// update ID to be unique:
 	author.ID = a.indexTable.Uid + 1
 	a.authors = append(a.authors, author)
@@ -94,17 +94,17 @@ func (a *AuthorsService) CreateAuthor(author entities.Author) error {
 	// write to file:
 	err := a.authorsFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	_, err = a.authorsFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of authors.fl: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	err = json.NewEncoder(a.authorsFile).Encode(a.authors)
 	if err != nil {
 		fmt.Println("error while writing posts to authors.fl: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 
 	// update index table:
@@ -117,19 +117,19 @@ func (a *AuthorsService) CreateAuthor(author entities.Author) error {
 	// write to file: (we have to update the existing json in file, not append the whole new one):
 	err = a.indexTableFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	_, err = a.indexTableFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of authors.ind: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	err = json.NewEncoder(a.indexTableFile).Encode(a.indexTable)
 	if err != nil {
 		fmt.Println("error while writing index table to authors.ind: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
-	return nil
+	return author, nil
 }
 
 func (a *AuthorsService) GetAuthorById(id int) (entities.Author, error) {
@@ -145,37 +145,37 @@ func (a *AuthorsService) GetAuthorById(id int) (entities.Author, error) {
 	}, errors.New("no post with such id")
 }
 
-func (a *AuthorsService) UpdateAuthor(post entities.Author) error {
+func (a *AuthorsService) UpdateAuthor(author entities.Author) (entities.Author, error) {
 	// search in index table:
 	for _, row := range a.indexTable.Rows {
-		if row.UID == post.ID {
-			a.authors[row.NumInArray] = post
+		if row.UID == author.ID {
+			a.authors[row.NumInArray] = author
 			// write to file:
 			err := a.authorsFile.Truncate(0)
 			if err != nil {
-				return err
+				return entities.Author{ID: -1}, err
 			}
 			_, err = a.authorsFile.Seek(0, 0)
 			if err != nil {
 				fmt.Println("error while seeking to the beginning of authors.fl: ", err.Error())
-				return err
+				return entities.Author{ID: -1}, err
 			}
 			err = json.NewEncoder(a.authorsFile).Encode(a.authors)
 			if err != nil {
 				fmt.Println("error while writing posts to authors.fl: ", err.Error())
-				return err
+				return entities.Author{ID: -1}, err
 			}
-			return nil
+			return author, nil
 		}
 	}
-	return errors.New("no author with such id")
+	return entities.Author{ID: -1}, errors.New("no author with such id")
 }
 
-func (a *AuthorsService) DeleteAuthor(id int) error {
+func (a *AuthorsService) DeleteAuthor(id int) (entities.Author, error) {
 	// to delete the author, we first have to delete all his posts:
 	err := a.postService.DeleteAllPostsByAuthorId(id)
 	if err != nil {
-		return err
+		return entities.Author{ID: -1}, err
 	}
 
 	// search for post in index table and update indexes of all posts after it (decrease by 1):
@@ -189,7 +189,7 @@ func (a *AuthorsService) DeleteAuthor(id int) error {
 		}
 	}
 	if !found {
-		return errors.New("no author with such id")
+		return entities.Author{ID: -1}, errors.New("no author with such id")
 	}
 	// iterate over each row after index and decrease NumInArray by 1:
 	for i := index + 1; i < len(a.indexTable.Rows); i++ {
@@ -200,17 +200,17 @@ func (a *AuthorsService) DeleteAuthor(id int) error {
 	//save index table to file:
 	err = a.indexTableFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	_, err = a.indexTableFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of authors.ind: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	err = json.NewEncoder(a.indexTableFile).Encode(a.indexTable)
 	if err != nil {
 		fmt.Println("error while writing index table to authors.ind: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 
 	// update posts:
@@ -218,35 +218,43 @@ func (a *AuthorsService) DeleteAuthor(id int) error {
 	// save posts to file:
 	err = a.authorsFile.Truncate(0)
 	if err != nil {
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	_, err = a.authorsFile.Seek(0, 0)
 	if err != nil {
 		fmt.Println("error while seeking to the beginning of author.fl: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
 	err = json.NewEncoder(a.authorsFile).Encode(a.authors)
 	if err != nil {
 		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return err
+		return entities.Author{ID: -1}, err
 	}
-	return nil
+	return entities.Author{ID: id}, nil
 }
 
-func (a *AuthorsService) GetAllAuthors() []entities.Author {
-	return a.authors
+func (a *AuthorsService) GetAllAuthors() ([]entities.Author, error) {
+	if len(a.authors) == 0 {
+		return nil, errors.New("no authors")
+	}
+	return a.authors, nil
 }
+
 func (a *AuthorsService) GetNumberOfAuthors() int {
 	return len(a.authors)
 }
+
 func (a *AuthorsService) GetPostsByAuthorId(id int) ([]entities.Post, error) {
 	return a.postService.GetPostsByAuthorId(id)
 }
 
-func (a *AuthorsService) PrintSystemInfo() {
+func (a *AuthorsService) PrintSystemInfo() error {
 	a.postService.PrintSystemInfo()
 	// print all the authors
-	authors := a.GetAllAuthors()
+	authors, err := a.GetAllAuthors()
+	if err != nil {
+		return err
+	}
 	fmt.Println("Authors:")
 	for _, author := range authors {
 		// print author info and posts by him:
@@ -257,34 +265,35 @@ func (a *AuthorsService) PrintSystemInfo() {
 		}
 		fmt.Println("Posts by author: ", posts)
 	}
+	return nil
 }
 
-func (a *AuthorsService) AddPostByAuthor(post entities.Post) error {
+func (a *AuthorsService) AddPostByAuthor(post entities.Post) (entities.Post, error) {
 	// search for author and throw error if author not found:
 	_, err := a.GetAuthorById(post.AuthorId)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
 	// add post to post service:
-	err = a.postService.CreatePost(post)
+	createdPost, err := a.postService.CreatePost(post)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
-	return nil
+	return createdPost, nil
 }
 
-func (a *AuthorsService) RemovePostFromAuthor(postId int) error {
-	err := a.postService.DeletePost(postId)
+func (a *AuthorsService) RemovePostFromAuthor(postId int) (entities.Post, error) {
+	removedPost, err := a.postService.DeletePost(postId)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
-	return nil
+	return removedPost, nil
 }
 
-func (a *AuthorsService) UpdatePostFromAuthor(post entities.Post) error {
-	err := a.postService.UpdatePost(post)
+func (a *AuthorsService) UpdatePostFromAuthor(post entities.Post) (entities.Post, error) {
+	updatedPost, err := a.postService.UpdatePost(post)
 	if err != nil {
-		return err
+		return entities.Post{ID: -1}, err
 	}
-	return nil
+	return updatedPost, nil
 }
