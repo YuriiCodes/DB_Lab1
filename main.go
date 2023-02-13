@@ -317,6 +317,6 @@ func main() {
 		return
 	}
 
-	//nonCliShowcase(*postsServ, *authorsServ)
-	CliShowcase(*authorsServ, *postsServ)
+	nonCliShowcase(*postsServ, *authorsServ)
+	//CliShowcase(*authorsServ, *postsServ)
 }

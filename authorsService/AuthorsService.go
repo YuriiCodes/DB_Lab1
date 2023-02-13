@@ -91,22 +91,6 @@ func (a *AuthorsService) CreateAuthor(author entities.Author) (entities.Author, 
 	author.ID = a.indexTable.Uid + 1
 	a.authors = append(a.authors, author)
 
-	// write to file:
-	err := a.authorsFile.Truncate(0)
-	if err != nil {
-		return entities.Author{ID: -1}, err
-	}
-	_, err = a.authorsFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of authors.fl: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
-	err = json.NewEncoder(a.authorsFile).Encode(a.authors)
-	if err != nil {
-		fmt.Println("error while writing posts to authors.fl: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
-
 	// update index table:
 	a.indexTable.Uid += 1
 	a.indexTable.Rows = append(a.indexTable.Rows, entities.IndexTableRow{
@@ -114,21 +98,6 @@ func (a *AuthorsService) CreateAuthor(author entities.Author) (entities.Author, 
 		NumInArray: len(a.authors) - 1,
 	})
 
-	// write to file: (we have to update the existing json in file, not append the whole new one):
-	err = a.indexTableFile.Truncate(0)
-	if err != nil {
-		return entities.Author{ID: -1}, err
-	}
-	_, err = a.indexTableFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of authors.ind: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
-	err = json.NewEncoder(a.indexTableFile).Encode(a.indexTable)
-	if err != nil {
-		fmt.Println("error while writing index table to authors.ind: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
 	return author, nil
 }
 
@@ -150,21 +119,6 @@ func (a *AuthorsService) UpdateAuthor(author entities.Author) (entities.Author, 
 	for _, row := range a.indexTable.Rows {
 		if row.UID == author.ID {
 			a.authors[row.NumInArray] = author
-			// write to file:
-			err := a.authorsFile.Truncate(0)
-			if err != nil {
-				return entities.Author{ID: -1}, err
-			}
-			_, err = a.authorsFile.Seek(0, 0)
-			if err != nil {
-				fmt.Println("error while seeking to the beginning of authors.fl: ", err.Error())
-				return entities.Author{ID: -1}, err
-			}
-			err = json.NewEncoder(a.authorsFile).Encode(a.authors)
-			if err != nil {
-				fmt.Println("error while writing posts to authors.fl: ", err.Error())
-				return entities.Author{ID: -1}, err
-			}
 			return author, nil
 		}
 	}
@@ -197,39 +151,10 @@ func (a *AuthorsService) DeleteAuthor(id int) (entities.Author, error) {
 	}
 	// update index table:
 	a.indexTable.Rows = append(a.indexTable.Rows[:index], a.indexTable.Rows[index+1:]...)
-	//save index table to file:
-	err = a.indexTableFile.Truncate(0)
-	if err != nil {
-		return entities.Author{ID: -1}, err
-	}
-	_, err = a.indexTableFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of authors.ind: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
-	err = json.NewEncoder(a.indexTableFile).Encode(a.indexTable)
-	if err != nil {
-		fmt.Println("error while writing index table to authors.ind: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
 
 	// update posts:
 	a.authors = append(a.authors[:index], a.authors[index+1:]...)
-	// save posts to file:
-	err = a.authorsFile.Truncate(0)
-	if err != nil {
-		return entities.Author{ID: -1}, err
-	}
-	_, err = a.authorsFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of author.fl: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
-	err = json.NewEncoder(a.authorsFile).Encode(a.authors)
-	if err != nil {
-		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return entities.Author{ID: -1}, err
-	}
+
 	return entities.Author{ID: id}, nil
 }
 
@@ -299,7 +224,39 @@ func (a *AuthorsService) UpdatePostFromAuthor(post entities.Post) (entities.Post
 }
 
 func (a *AuthorsService) Close() error {
-	err := a.postService.Close()
+	// write to file:
+	err := a.authorsFile.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = a.authorsFile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("error while seeking to the beginning of authors.fl: ", err.Error())
+		return err
+	}
+	err = json.NewEncoder(a.authorsFile).Encode(a.authors)
+	if err != nil {
+		fmt.Println("error while writing posts to authors.fl: ", err.Error())
+		return err
+	}
+
+	// write to file: (we have to update the existing json in file, not append the whole new one):
+	err = a.indexTableFile.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = a.indexTableFile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("error while seeking to the beginning of authors.ind: ", err.Error())
+		return err
+	}
+	err = json.NewEncoder(a.indexTableFile).Encode(a.indexTable)
+	if err != nil {
+		fmt.Println("error while writing index table to authors.ind: ", err.Error())
+		return err
+	}
+
+	err = a.postService.Close()
 	if err != nil {
 		return err
 	}

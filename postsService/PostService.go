@@ -88,22 +88,6 @@ func (p *PostService) CreatePost(post entities.Post) (entities.Post, error) {
 	post.ID = p.indexTable.Uid + 1
 	p.posts = append(p.posts, post)
 
-	// write to file:
-	err := p.postsFile.Truncate(0)
-	if err != nil {
-		return entities.Post{ID: -1}, err
-	}
-	_, err = p.postsFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-		return entities.Post{}, err
-	}
-	err = json.NewEncoder(p.postsFile).Encode(p.posts)
-	if err != nil {
-		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
-
 	// update index table:
 	p.indexTable.Uid += 1
 	p.indexTable.Rows = append(p.indexTable.Rows, entities.IndexTableRow{
@@ -111,21 +95,6 @@ func (p *PostService) CreatePost(post entities.Post) (entities.Post, error) {
 		NumInArray: len(p.posts) - 1,
 	})
 
-	// write to file: (we have to update the existing json in file, not append the whole new one):
-	err = p.indexTableFile.Truncate(0)
-	if err != nil {
-		return entities.Post{ID: -1}, err
-	}
-	_, err = p.indexTableFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of posts.ind: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
-	err = json.NewEncoder(p.indexTableFile).Encode(p.indexTable)
-	if err != nil {
-		fmt.Println("error while writing index table to posts.ind: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
 	return post, nil
 }
 
@@ -146,21 +115,6 @@ func (p *PostService) UpdatePost(post entities.Post) (entities.Post, error) {
 	for _, row := range p.indexTable.Rows {
 		if row.UID == post.ID {
 			p.posts[row.NumInArray] = post
-			// write to file:
-			err := p.postsFile.Truncate(0)
-			if err != nil {
-				return entities.Post{ID: -1}, err
-			}
-			_, err = p.postsFile.Seek(0, 0)
-			if err != nil {
-				fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-				return entities.Post{}, err
-			}
-			err = json.NewEncoder(p.postsFile).Encode(p.posts)
-			if err != nil {
-				fmt.Println("error while writing posts to posts.fl: ", err.Error())
-				return entities.Post{ID: -1}, err
-			}
 			return post, nil
 		}
 	}
@@ -187,39 +141,9 @@ func (p *PostService) DeletePost(id int) (entities.Post, error) {
 	}
 	// update index table:
 	p.indexTable.Rows = append(p.indexTable.Rows[:index], p.indexTable.Rows[index+1:]...)
-	//save index table to file:
-	err := p.indexTableFile.Truncate(0)
-	if err != nil {
-		return entities.Post{ID: -1}, err
-	}
-	_, err = p.indexTableFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of posts.ind: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
-	err = json.NewEncoder(p.indexTableFile).Encode(p.indexTable)
-	if err != nil {
-		fmt.Println("error while writing index table to posts.ind: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
 
 	// update posts:
 	p.posts = append(p.posts[:index], p.posts[index+1:]...)
-	// save posts to file:
-	err = p.postsFile.Truncate(0)
-	if err != nil {
-		return entities.Post{ID: -1}, err
-	}
-	_, err = p.postsFile.Seek(0, 0)
-	if err != nil {
-		fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
-	err = json.NewEncoder(p.postsFile).Encode(p.posts)
-	if err != nil {
-		fmt.Println("error while writing posts to posts.fl: ", err.Error())
-		return entities.Post{ID: -1}, err
-	}
 	return entities.Post{ID: id}, nil
 }
 
@@ -279,7 +203,39 @@ func (p *PostService) PrintSystemInfo() {
 }
 
 func (p *PostService) Close() error {
-	err := p.postsFile.Close()
+	// write main to file:
+	err := p.postsFile.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = p.postsFile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("error while seeking to the beginning of posts.fl: ", err.Error())
+		return err
+	}
+	err = json.NewEncoder(p.postsFile).Encode(p.posts)
+	if err != nil {
+		fmt.Println("error while writing posts to posts.fl: ", err.Error())
+		return err
+	}
+
+	// write to file: (we have to update the existing json in file, not append the whole new one):
+	err = p.indexTableFile.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = p.indexTableFile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("error while seeking to the beginning of posts.ind: ", err.Error())
+		return err
+	}
+	err = json.NewEncoder(p.indexTableFile).Encode(p.indexTable)
+	if err != nil {
+		fmt.Println("error while writing index table to posts.ind: ", err.Error())
+		return err
+	}
+
+	err = p.postsFile.Close()
 	if err != nil {
 		return err
 	}
